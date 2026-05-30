@@ -1,0 +1,20 @@
+[package]
+name = "feathernix-flake"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "flake.toml + flake.lock.toml parsing for FeatherNix"
+
+[dependencies]
+feathernix-repo.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+toml.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

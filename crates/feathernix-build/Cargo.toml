@@ -1,0 +1,22 @@
+[package]
+name = "feathernix-build"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Producer-side build orchestrator: recipe -> .fnpkg.7z"
+
+[dependencies]
+feathernix-archive.workspace = true
+feathernix-recipe.workspace = true
+feathernix-source.workspace = true
+feathernix-sandbox.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

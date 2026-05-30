@@ -1,0 +1,23 @@
+[package]
+name = "feathernix-publish"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Repository publisher: generate signed repodata/index.toml from a packages/ dir"
+
+[dependencies]
+feathernix-archive.workspace = true
+feathernix-repo.workspace = true
+feathernix-sign.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+sha2.workspace = true
+hex.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

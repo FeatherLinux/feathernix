@@ -1,0 +1,24 @@
+[package]
+name = "feathernix-builder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Realizer (download/extract orchestrator) for FeatherNix"
+
+[dependencies]
+feathernix-archive.workspace = true
+feathernix-store.workspace = true
+feathernix-repo.workspace = true
+feathernix-db.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+diesel.workspace = true
+
+[dev-dependencies]
+feathernix-config.workspace = true
+tempfile.workspace = true

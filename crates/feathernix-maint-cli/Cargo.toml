@@ -1,0 +1,29 @@
+[package]
+name = "feathernix-maint-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "fnmaint CLI: build, sign, and publish FeatherNix packages"
+
+[[bin]]
+name = "fnmaint"
+path = "src/main.rs"
+
+[dependencies]
+feathernix-recipe.workspace = true
+feathernix-source.workspace = true
+feathernix-sandbox.workspace = true
+feathernix-build.workspace = true
+feathernix-config.workspace = true
+feathernix-sign.workspace = true
+feathernix-publish.workspace = true
+feathernix-buildd-proto.workspace = true
+
+reqwest.workspace = true
+
+anyhow.workspace = true
+clap.workspace = true
+colored.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "feathernix-archive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "7zip archive read/write for FeatherNix .fnpkg packages"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+toml.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+sevenz-rust2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

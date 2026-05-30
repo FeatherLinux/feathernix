@@ -1,0 +1,17 @@
+[package]
+name = "feathernix-sign"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Detached OpenPGP signing for FeatherNix packages and indices"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+pgp.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

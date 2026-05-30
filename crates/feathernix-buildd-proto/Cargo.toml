@@ -1,0 +1,11 @@
+[package]
+name = "feathernix-buildd-proto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Shared types and route constants for the FeatherNix buildd controller/worker"
+
+[dependencies]
+serde.workspace = true
+chrono.workspace = true

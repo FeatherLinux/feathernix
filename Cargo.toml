@@ -1,0 +1,98 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/feathernix-cli",
+    "crates/feathernix-config",
+    "crates/feathernix-db",
+    "crates/feathernix-repo",
+    "crates/feathernix-archive",
+    "crates/feathernix-store",
+    "crates/feathernix-flake",
+    "crates/feathernix-builder",
+    "crates/feathernix-recipe",
+    "crates/feathernix-source",
+    "crates/feathernix-sandbox",
+    "crates/feathernix-build",
+    "crates/feathernix-maint-cli",
+    "crates/feathernix-sign",
+    "crates/feathernix-publish",
+    "crates/feathernix-buildd-proto",
+    "crates/feathernix-buildd",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+authors = ["FeatherNix Contributors"]
+repository = "https://github.com/feathernix/feathernix"
+description = "Hybrid Nix/RPM-style package manager: reproducible store, binary repos, generations."
+
+[workspace.dependencies]
+# Internal crates
+feathernix-config = { path = "crates/feathernix-config", version = "0.1.0" }
+feathernix-db = { path = "crates/feathernix-db", version = "0.1.0" }
+feathernix-repo = { path = "crates/feathernix-repo", version = "0.1.0" }
+feathernix-archive = { path = "crates/feathernix-archive", version = "0.1.0" }
+feathernix-store = { path = "crates/feathernix-store", version = "0.1.0" }
+feathernix-flake = { path = "crates/feathernix-flake", version = "0.1.0" }
+feathernix-builder = { path = "crates/feathernix-builder", version = "0.1.0" }
+feathernix-recipe = { path = "crates/feathernix-recipe", version = "0.1.0" }
+feathernix-source = { path = "crates/feathernix-source", version = "0.1.0" }
+feathernix-sandbox = { path = "crates/feathernix-sandbox", version = "0.1.0" }
+feathernix-build = { path = "crates/feathernix-build", version = "0.1.0" }
+feathernix-sign = { path = "crates/feathernix-sign", version = "0.1.0" }
+feathernix-publish = { path = "crates/feathernix-publish", version = "0.1.0" }
+feathernix-buildd-proto = { path = "crates/feathernix-buildd-proto", version = "0.1.0" }
+feathernix-buildd = { path = "crates/feathernix-buildd", version = "0.1.0" }
+
+# Errors
+anyhow = "1"
+thiserror = "2"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+
+# Filesystem / utilities
+walkdir = "2"
+tempfile = "3"
+dirs = "5"
+
+# HTTP
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
+
+# Crypto / hashing
+sha2 = "0.10"
+blake3 = "1"
+hex = "0.4"
+
+# Database
+diesel = { version = "2.2", features = ["sqlite", "r2d2", "chrono"] }
+diesel_migrations = { version = "2.2", features = ["sqlite"] }
+libsqlite3-sys = { version = "0.30", features = ["bundled"] }
+r2d2 = "0.8"
+
+# Archive
+sevenz-rust2 = "0.18"
+
+# OpenPGP
+pgp = "0.19"
+rand = "0.8"
+smallvec = "1"
+
+# Test helpers
+httpmock = "0.7"

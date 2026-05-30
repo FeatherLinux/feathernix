@@ -1,0 +1,24 @@
+[package]
+name = "feathernix-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "/fnix/store path layout and profile management"
+
+[dependencies]
+feathernix-db.workspace = true
+
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+sha2.workspace = true
+blake3.workspace = true
+hex.workspace = true
+diesel.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
