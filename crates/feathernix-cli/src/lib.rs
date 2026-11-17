@@ -113,12 +113,12 @@ enum FlakeCmd {
         #[arg(long, default_value = ".")]
         root: PathBuf,
     },
-    /// Display the parsed flake.toml in CWD
+    /// Display flake.toml and resolve package refs against cached repo metadata
     Show {
         #[arg(long, default_value = ".")]
         root: PathBuf,
     },
-    /// Refresh flake.lock.toml against current input state (stub)
+    /// Refresh flake.lock.toml against current repo input state
     Lock {
         #[arg(long, default_value = ".")]
         root: PathBuf,
@@ -142,15 +142,10 @@ pub fn run() -> Result<()> {
         .with_target(false)
         .try_init();
 
-    // Flake commands don't need the full Context (no DB / config).
     if let Cmd::Flake { cmd } = &cli.cmd {
-        return match cmd {
-            FlakeCmd::Init { description, root } => {
-                commands::flake::init(root.clone(), description.clone())
-            }
-            FlakeCmd::Show { root } => commands::flake::show(root.clone()),
-            FlakeCmd::Lock { root } => commands::flake::lock(root.clone()),
-        };
+        if let FlakeCmd::Init { description, root } = cmd {
+            return commands::flake::init(root.clone(), description.clone());
+        }
     }
 
     let ctx = Context::load(ContextOpts {
@@ -171,7 +166,13 @@ pub fn run() -> Result<()> {
                 url,
                 gpg_key_url,
                 signature_required,
-            } => commands::repo::add(&ctx, &name, &url, gpg_key_url.as_deref(), signature_required),
+            } => commands::repo::add(
+                &ctx,
+                &name,
+                &url,
+                gpg_key_url.as_deref(),
+                signature_required,
+            ),
             RepoCmd::Remove { name } => commands::repo::remove(&ctx, &name),
             RepoCmd::Refresh => commands::repo::refresh(&ctx),
         },
@@ -184,6 +185,12 @@ pub fn run() -> Result<()> {
             StoreCmd::List => commands::store::list(&ctx),
             StoreCmd::PathInfo { hash } => commands::store::path_info(&ctx, &hash),
         },
-        Cmd::Flake { .. } => unreachable!("handled earlier"),
+        Cmd::Flake { cmd } => match cmd {
+            FlakeCmd::Init { description, root } => {
+                commands::flake::init(root.clone(), description.clone())
+            }
+            FlakeCmd::Show { root } => commands::flake::show(&ctx, root),
+            FlakeCmd::Lock { root } => commands::flake::lock(&ctx, root),
+        },
     }
 }

@@ -2,3 +2,5 @@
 Cargo.lock
 testroot/
 *.tmp
+
+.idea/

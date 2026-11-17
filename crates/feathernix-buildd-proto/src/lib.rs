@@ -6,16 +6,16 @@ pub const HEADER_WORKER_TOKEN: &str = "X-Feathernix-Worker-Token";
 
 pub mod routes {
     pub const SUBMIT_JOB: &str = "/v1/jobs";
-    pub const GET_JOB: &str = "/v1/jobs/:id";
+    pub const GET_JOB: &str = "/v1/jobs/{id}";
     pub const LIST_JOBS: &str = "/v1/jobs";
-    pub const REBUILD_JOB: &str = "/v1/jobs/:id/rebuild";
+    pub const REBUILD_JOB: &str = "/v1/jobs/{id}/rebuild";
     pub const REGISTER_WORKER: &str = "/v1/workers/register";
     pub const LIST_WORKERS: &str = "/v1/workers";
-    pub const HEARTBEAT: &str = "/v1/workers/:id/heartbeat";
-    pub const LEASE: &str = "/v1/workers/:id/lease";
-    pub const APPEND_LOG: &str = "/v1/workers/:id/jobs/:job_id/log";
-    pub const UPLOAD_ARTIFACT: &str = "/v1/workers/:id/jobs/:job_id/artifact";
-    pub const COMPLETE_JOB: &str = "/v1/workers/:id/jobs/:job_id/complete";
+    pub const HEARTBEAT: &str = "/v1/workers/{id}/heartbeat";
+    pub const LEASE: &str = "/v1/workers/{id}/lease";
+    pub const APPEND_LOG: &str = "/v1/workers/{id}/jobs/{job_id}/log";
+    pub const UPLOAD_ARTIFACT: &str = "/v1/workers/{id}/jobs/{job_id}/artifact";
+    pub const COMPLETE_JOB: &str = "/v1/workers/{id}/jobs/{job_id}/complete";
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

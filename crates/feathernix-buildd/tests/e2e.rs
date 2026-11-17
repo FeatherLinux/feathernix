@@ -49,6 +49,29 @@ impl Drop for Reaper {
 }
 
 #[test]
+fn controller_routes_start_and_match_job_ids() {
+    let tmp = tempfile::tempdir().unwrap();
+    let listen = format!("127.0.0.1:{}", pick_free_port());
+    let base = format!("http://{listen}");
+    let _controller = Reaper(
+        Command::new(buildd_bin())
+            .args(["controller", "--listen", &listen, "--state"])
+            .arg(tmp.path())
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("spawn controller"),
+    );
+    assert!(wait_until_listening(&format!("{base}/healthz"), 10_000));
+
+    let client = reqwest::blocking::Client::new();
+    let response = client.get(format!("{base}/v1/jobs")).send().unwrap();
+    assert!(response.status().is_success());
+    let response = client.get(format!("{base}/v1/jobs/missing-job")).send().unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::NOT_FOUND);
+    assert_eq!(response.text().unwrap(), "job missing-job not found");
+}
+
+#[test]
 fn submit_lease_build_publish_install_roundtrip() {
     if !have_bwrap() {
         eprintln!("skipping: bwrap not available");

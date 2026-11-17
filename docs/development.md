@@ -2,7 +2,7 @@
 
 ## Toolchain
 
-- Rust **1.85+** (`edition = "2024"`) — set in the workspace `Cargo.toml`.
+- Rust **1.95+** (`edition = "2024"`) — set in the workspace `Cargo.toml`.
 - Linux with user namespaces enabled (kernel default on every modern
   distro).
 - For `fnmaint build` and the buildd worker:
@@ -103,7 +103,7 @@ RUST_LOG=feathernix_repo=debug,feathernix_store=trace fn install hello
 ## Dependency landmines
 
 - **SQLite versions must match across the workspace.** `feathernix-buildd`
-  pins `rusqlite = "0.32"`, which pulls `libsqlite3-sys = 0.30`, the same
+  pins `rusqlite = "0.43"`, which pulls `libsqlite3-sys = 0.40`, the same
   version Diesel uses on the consumer side. Cargo's `links = "sqlite3"`
   rule forbids two versions of the same native library in one binary. When
   bumping either crate, look up the exact `libsqlite3-sys` version each

@@ -19,12 +19,7 @@ fn err(code: StatusCode, msg: impl Into<String>) -> (StatusCode, String) {
 }
 
 fn random_id(prefix: &str) -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let mut bytes = [0u8; 12];
-    for b in &mut bytes {
-        *b = rng.r#gen();
-    }
+    let bytes: [u8; 12] = rand::random();
     format!("{prefix}-{}", hex::encode(bytes))
 }
 

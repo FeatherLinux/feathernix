@@ -40,6 +40,22 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn resolve(&self, name: &str) -> Result<ResolvedPackage, RepoError> {
+        self.resolve_inner(name, None)
+    }
+
+    pub fn resolve_from_repo_url(
+        &self,
+        name: &str,
+        repo_url: &str,
+    ) -> Result<ResolvedPackage, RepoError> {
+        self.resolve_inner(name, Some(repo_url))
+    }
+
+    fn resolve_inner(
+        &self,
+        name: &str,
+        repo_url: Option<&str>,
+    ) -> Result<ResolvedPackage, RepoError> {
         let mut conn = self.db.conn()?;
         type Row = (
             i32,            // packages_available.id
@@ -62,11 +78,31 @@ impl<'a> Resolver<'a> {
             Option<String>, // repo_gpg_key_url
         );
 
-        let candidates: Vec<Row> = pa::packages_available
+        if let Some(url) = repo_url {
+            let cached = r::repositories
+                .filter(r::base_url.eq(url))
+                .filter(r::enabled.eq(true))
+                .count()
+                .get_result::<i64>(&mut conn)?;
+            if cached == 0 {
+                return Err(RepoError::RepositoryNotCached {
+                    base_url: url.to_string(),
+                });
+            }
+        }
+
+        let mut query = pa::packages_available
             .inner_join(r::repositories.on(r::id.eq(pa::repo_id)))
             .filter(pa::name.eq(name))
             .filter(pa::arch.eq(&self.arch))
             .filter(r::enabled.eq(true))
+            .into_boxed();
+
+        if let Some(url) = repo_url {
+            query = query.filter(r::base_url.eq(url));
+        }
+
+        let candidates: Vec<Row> = query
             .select((
                 pa::id,
                 pa::repo_id,

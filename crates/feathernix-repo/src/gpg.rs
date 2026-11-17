@@ -104,7 +104,7 @@ mod tests {
     };
     use pgp::crypto::hash::HashAlgorithm;
     use pgp::types::Password;
-    use rand::rngs::OsRng;
+    use feathernix_crypto::CompatOsRng;
 
     fn make_keypair() -> (SignedSecretKey, Vec<u8>) {
         let mut signkey = SubkeyParamsBuilder::default();
@@ -122,7 +122,7 @@ mod tests {
             .primary_user_id("FeatherNix Test <test@example.com>".into())
             .subkeys(vec![signkey.build().unwrap()]);
         let params = key_params.build().unwrap();
-        let sk = params.generate(OsRng).unwrap();
+        let sk = params.generate(CompatOsRng).unwrap();
         let pk = SignedPublicKey::from(sk.clone());
         let mut armor = Vec::new();
         pk.to_armored_writer(&mut armor, ArmorOptions::default())
@@ -132,7 +132,7 @@ mod tests {
 
     fn sign_detached_armor(data: &[u8], sk: &SignedSecretKey) -> Vec<u8> {
         let sig = DetachedSignature::sign_binary_data(
-            OsRng,
+            CompatOsRng,
             &sk.primary_key,
             &Password::empty(),
             HashAlgorithm::Sha256,

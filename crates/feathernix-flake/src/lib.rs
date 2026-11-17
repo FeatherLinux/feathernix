@@ -1,7 +1,10 @@
 pub mod types;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use chrono::{SecondsFormat, Utc};
+use feathernix_repo::{Fetcher, INDEX_REL_PATH, RepoError, RepositoryIndex, sha256_hex};
 use thiserror::Error;
 
 pub use types::{
@@ -27,6 +30,19 @@ pub enum FlakeError {
     NotFound(PathBuf),
     #[error("flake.toml already exists in {0}")]
     AlreadyExists(PathBuf),
+    #[error("unsupported {operation} input {name:?} of kind {kind}")]
+    UnsupportedInputKind {
+        name: String,
+        kind: InputKind,
+        operation: &'static str,
+    },
+    #[error("failed to lock input {name:?} from {url}: {source}")]
+    LockInput {
+        name: String,
+        url: String,
+        #[source]
+        source: RepoError,
+    },
 }
 
 pub type FlakeResult<T> = Result<T, FlakeError>;
@@ -68,8 +84,73 @@ pub fn load_lock(root: &Path) -> FlakeResult<Option<FlakeLock>> {
 pub fn save_lock(root: &Path, lock: &FlakeLock) -> FlakeResult<()> {
     let p = lock_path(root);
     let raw = toml::to_string_pretty(lock)?;
-    std::fs::write(&p, raw)?;
+    let tmp = p.with_extension("toml.tmp");
+    std::fs::write(&tmp, raw)?;
+    std::fs::rename(&tmp, &p)?;
     Ok(())
+}
+
+pub fn build_lock(root: &Path) -> FlakeResult<FlakeLock> {
+    let flake = load(root)?;
+    let fetcher = Fetcher::new().map_err(|source| FlakeError::LockInput {
+        name: "<fetcher>".to_string(),
+        url: String::new(),
+        source,
+    })?;
+    let locked_at = utc_now_rfc3339();
+    let mut inputs = BTreeMap::new();
+
+    for (name, input) in &flake.inputs {
+        let locked = match input.kind {
+            InputKind::Repo => lock_repo_input(&fetcher, name, input)?,
+            InputKind::Flake | InputKind::Path => {
+                return Err(FlakeError::UnsupportedInputKind {
+                    name: name.clone(),
+                    kind: input.kind,
+                    operation: "lock",
+                });
+            }
+        };
+        inputs.insert(name.clone(), locked);
+    }
+
+    Ok(FlakeLock {
+        format_version: 1,
+        locked_at,
+        inputs,
+    })
+}
+
+fn lock_repo_input(fetcher: &Fetcher, name: &str, input: &FlakeInput) -> FlakeResult<LockedInput> {
+    let bytes = fetcher
+        .fetch_bytes(&input.url, INDEX_REL_PATH)
+        .map_err(|source| FlakeError::LockInput {
+            name: name.to_string(),
+            url: input.url.clone(),
+            source,
+        })?;
+    let index_text = std::str::from_utf8(&bytes).map_err(|source| FlakeError::LockInput {
+        name: name.to_string(),
+        url: input.url.clone(),
+        source: RepoError::ParseIndex(source.to_string()),
+    })?;
+    let index = RepositoryIndex::from_str(index_text).map_err(|source| FlakeError::LockInput {
+        name: name.to_string(),
+        url: input.url.clone(),
+        source: RepoError::ParseIndex(source.to_string()),
+    })?;
+
+    Ok(LockedInput {
+        kind: InputKind::Repo,
+        url: input.url.clone(),
+        locked_revision: Some(index.index.generated_at),
+        locked_sha256: Some(sha256_hex(&bytes)),
+        fetched_at: utc_now_rfc3339(),
+    })
+}
+
+fn utc_now_rfc3339() -> String {
+    Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
 }
 
 pub fn init(root: &Path, description: Option<&str>) -> FlakeResult<PathBuf> {
@@ -136,9 +217,8 @@ mod tests {
             LockedInput {
                 kind: InputKind::Repo,
                 url: "http://x".to_string(),
-                revision: None,
-                sha256: None,
-                index_sha256: Some("abc".to_string()),
+                locked_revision: Some("2026-05-21T10:00:00Z".to_string()),
+                locked_sha256: Some("abc".to_string()),
                 fetched_at: "2026-05-21T10:00:00Z".to_string(),
             },
         );
@@ -151,5 +231,87 @@ mod tests {
         let loaded = load_lock(tmp.path()).unwrap().unwrap();
         assert_eq!(loaded.format_version, 1);
         assert!(loaded.inputs.contains_key("stable"));
+        assert_eq!(
+            loaded.inputs["stable"].locked_revision.as_deref(),
+            Some("2026-05-21T10:00:00Z")
+        );
+        assert_eq!(
+            loaded.inputs["stable"].locked_sha256.as_deref(),
+            Some("abc")
+        );
+    }
+
+    #[test]
+    fn build_lock_locks_repo_input_from_index() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("repo");
+        std::fs::create_dir_all(repo.join("repodata")).unwrap();
+        std::fs::write(
+            repo.join("repodata/index.toml"),
+            r#"
+[index]
+format_version = 1
+generated_at = "2026-05-21T10:00:00Z"
+repository = "devrepo"
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join(FLAKE_FILENAME),
+            format!(
+                r#"
+[inputs.devrepo]
+kind = "repo"
+url = "file://{}"
+"#,
+                repo.display()
+            ),
+        )
+        .unwrap();
+
+        let lock = build_lock(tmp.path()).unwrap();
+        let input = lock.inputs.get("devrepo").unwrap();
+        assert_eq!(
+            input.locked_revision.as_deref(),
+            Some("2026-05-21T10:00:00Z")
+        );
+        assert!(input.locked_sha256.as_deref().unwrap().len() == 64);
+        assert!(input.fetched_at.ends_with('Z'));
+    }
+
+    #[test]
+    fn build_lock_rejects_flake_inputs() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(FLAKE_FILENAME),
+            r#"
+[inputs.other]
+kind = "flake"
+url = "https://example.invalid/flake"
+"#,
+        )
+        .unwrap();
+        let err = build_lock(tmp.path()).unwrap_err();
+        assert!(
+            matches!(err, FlakeError::UnsupportedInputKind { name, kind: InputKind::Flake, .. } if name == "other")
+        );
+    }
+
+    #[test]
+    fn build_lock_rejects_path_inputs() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(FLAKE_FILENAME),
+            r#"
+[inputs.local]
+kind = "path"
+url = "../local"
+"#,
+        )
+        .unwrap();
+        let err = build_lock(tmp.path()).unwrap_err();
+        assert!(
+            matches!(err, FlakeError::UnsupportedInputKind { name, kind: InputKind::Path, .. } if name == "local")
+        );
     }
 }

@@ -15,6 +15,7 @@ members = [
     "crates/feathernix-build",
     "crates/feathernix-maint-cli",
     "crates/feathernix-sign",
+    "crates/feathernix-crypto",
     "crates/feathernix-publish",
     "crates/feathernix-buildd-proto",
     "crates/feathernix-buildd",
@@ -23,7 +24,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.95"
 license = "MIT"
 authors = ["FeatherNix Contributors"]
 repository = "https://github.com/feathernix/feathernix"
@@ -42,6 +43,7 @@ feathernix-recipe = { path = "crates/feathernix-recipe", version = "0.1.0" }
 feathernix-source = { path = "crates/feathernix-source", version = "0.1.0" }
 feathernix-sandbox = { path = "crates/feathernix-sandbox", version = "0.1.0" }
 feathernix-build = { path = "crates/feathernix-build", version = "0.1.0" }
+feathernix-crypto = { path = "crates/feathernix-crypto", version = "0.1.0" }
 feathernix-sign = { path = "crates/feathernix-sign", version = "0.1.0" }
 feathernix-publish = { path = "crates/feathernix-publish", version = "0.1.0" }
 feathernix-buildd-proto = { path = "crates/feathernix-buildd-proto", version = "0.1.0" }
@@ -54,7 +56,7 @@ thiserror = "2"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.1"
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
@@ -65,34 +67,36 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # CLI
 clap = { version = "4", features = ["derive"] }
-colored = "2"
+colored = "3.1"
 
 # Filesystem / utilities
 walkdir = "2"
 tempfile = "3"
-dirs = "5"
+dirs = "7"
 
 # HTTP
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls", "json"] }
 
 # Crypto / hashing
-sha2 = "0.10"
+sha2 = "0.11.1"
 blake3 = "1"
 hex = "0.4"
 
 # Database
-diesel = { version = "2.2", features = ["sqlite", "r2d2", "chrono"] }
-diesel_migrations = { version = "2.2", features = ["sqlite"] }
-libsqlite3-sys = { version = "0.30", features = ["bundled"] }
+diesel = { version = "2.4", features = ["sqlite", "r2d2", "chrono"] }
+diesel_migrations = { version = "2.4", features = ["sqlite"] }
+libsqlite3-sys = { version = "0.40.0", features = ["bundled"] }
 r2d2 = "0.8"
 
 # Archive
-sevenz-rust2 = "0.18"
+sevenz-rust2 = "0.25.0"
 
 # OpenPGP
-pgp = "0.19"
-rand = "0.8"
+pgp = "0.21.1"
+rand = "0.10"
+# pgp still requires the Rand Core 0.6 traits; isolate the bridge in feathernix-crypto.
+rand_core_06 = { package = "rand_core", version = "0.6", features = ["std"] }
 smallvec = "1"
 
 # Test helpers
-httpmock = "0.7"
+httpmock = "0.9"

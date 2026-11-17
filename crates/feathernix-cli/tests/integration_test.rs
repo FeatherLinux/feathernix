@@ -10,7 +10,7 @@ use pgp::composed::{
 };
 use pgp::crypto::hash::HashAlgorithm;
 use pgp::types::Password;
-use rand::rngs::OsRng;
+use feathernix_crypto::CompatOsRng;
 
 fn fn_bin() -> Command {
     Command::new(env!("CARGO_BIN_EXE_fn"))
@@ -43,7 +43,11 @@ summary = "fixture {name}"
 "#
     ))
     .unwrap();
-    std::fs::write(src.join("manifest.toml"), manifest.to_pretty_string().unwrap()).unwrap();
+    std::fs::write(
+        src.join("manifest.toml"),
+        manifest.to_pretty_string().unwrap(),
+    )
+    .unwrap();
     std::fs::write(src.join(format!("payload/bin/{name}")), bin_payload).unwrap();
     let archive = workdir.join(format!("{name}-{version}-1-x86_64-linux.fnpkg.7z"));
     pack(&src, &archive).unwrap();
@@ -66,7 +70,7 @@ fn make_signing_keypair() -> (SignedSecretKey, Vec<u8>) {
         .primary_user_id("FeatherNix Integration Test <it@example.com>".into())
         .subkeys(vec![signkey.build().unwrap()]);
     let params = key_params.build().unwrap();
-    let sk = params.generate(OsRng).unwrap();
+    let sk = params.generate(CompatOsRng).unwrap();
     let pk = SignedPublicKey::from(sk.clone());
     let mut armor = Vec::new();
     pk.to_armored_writer(&mut armor, ArmorOptions::default())
@@ -76,7 +80,7 @@ fn make_signing_keypair() -> (SignedSecretKey, Vec<u8>) {
 
 fn sign_detached(data: &[u8], sk: &SignedSecretKey) -> Vec<u8> {
     let sig = DetachedSignature::sign_binary_data(
-        OsRng,
+        CompatOsRng,
         &sk.primary_key,
         &Password::empty(),
         HashAlgorithm::Sha256,
@@ -129,7 +133,10 @@ fn build_sample_repo(workdir: &Path) -> PathBuf {
     ] {
         let archive = build_package(workdir, name, "1.0.0", payload);
         let bytes = std::fs::read(&archive).unwrap();
-        let payload_rel = format!("packages/{}", archive.file_name().unwrap().to_string_lossy());
+        let payload_rel = format!(
+            "packages/{}",
+            archive.file_name().unwrap().to_string_lossy()
+        );
         std::fs::copy(&archive, packages_dir.join(archive.file_name().unwrap())).unwrap();
         entries.push(PackageEntry {
             name: name.to_string(),
@@ -198,7 +205,10 @@ fn full_install_rollback_flow() {
 
     // fn install ripgrep fd
     let (ok, out, err) = run(fn_bin().args(["install", "ripgrep", "fd"]), &env_root);
-    assert!(ok, "install ripgrep fd failed:\nstdout:\n{out}\nstderr:\n{err}");
+    assert!(
+        ok,
+        "install ripgrep fd failed:\nstdout:\n{out}\nstderr:\n{err}"
+    );
     assert!(out.contains("generation 2 active"));
 
     // fn generation list
@@ -207,7 +217,9 @@ fn full_install_rollback_flow() {
     assert!(out.contains("current"), "list should mark current:\n{out}");
     let gen_lines: Vec<&str> = out
         .lines()
-        .filter(|l| l.split_whitespace().next() == Some("1") || l.split_whitespace().next() == Some("2"))
+        .filter(|l| {
+            l.split_whitespace().next() == Some("1") || l.split_whitespace().next() == Some("2")
+        })
         .collect();
     assert_eq!(gen_lines.len(), 2, "expected two generations:\n{out}");
     assert!(
@@ -259,14 +271,157 @@ fn flake_init_and_show() {
     );
     assert!(ok, "flake init failed:\nstderr:\n{err}");
     assert!(flake_root.join("flake.toml").exists());
+}
+
+#[test]
+fn flake_lock_writes_lockfile_for_repo_input() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path().join("work");
+    let env_root = tmp.path().join("fnroot");
+    let flake_root = tmp.path().join("flake-root");
+    std::fs::create_dir_all(&work).unwrap();
+    std::fs::create_dir_all(&flake_root).unwrap();
+
+    let repo_root = build_sample_repo(&work);
+    let base_url = format!("file://{}", repo_root.display());
+    std::fs::write(
+        flake_root.join("flake.toml"),
+        format!(
+            r#"
+[inputs.devrepo]
+kind = "repo"
+url = "{base_url}"
+
+[outputs.packages.default]
+packages = ["devrepo#hello"]
+"#
+        ),
+    )
+    .unwrap();
+
+    let (ok, out, err) = run(
+        fn_bin().args(["flake", "lock", "--root"]).arg(&flake_root),
+        &env_root,
+    );
+    assert!(ok, "flake lock failed:\nstdout:\n{out}\nstderr:\n{err}");
+    assert!(out.contains("locked devrepo"), "stdout:\n{out}");
+    let lock = std::fs::read_to_string(flake_root.join("flake.lock.toml")).unwrap();
+    assert!(
+        lock.contains("locked_revision = \"2026-05-21T10:00:00Z\""),
+        "{lock}"
+    );
+    assert!(lock.contains("locked_sha256 = \""), "{lock}");
+    assert!(lock.contains("fetched_at = \""), "{lock}");
+}
+
+#[test]
+fn flake_show_resolves_cached_packages() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path().join("work");
+    let env_root = tmp.path().join("fnroot");
+    let flake_root = tmp.path().join("flake-root");
+    std::fs::create_dir_all(&work).unwrap();
+    std::fs::create_dir_all(&flake_root).unwrap();
+
+    let repo_root = build_sample_repo(&work);
+    let base_url = format!("file://{}", repo_root.display());
+    let (ok, out, err) = run(
+        fn_bin().args(["repo", "add", "devrepo", &base_url]),
+        &env_root,
+    );
+    assert!(ok, "repo add failed:\nstdout:\n{out}\nstderr:\n{err}");
+
+    std::fs::write(
+        flake_root.join("flake.toml"),
+        format!(
+            r#"
+description = "cached flake"
+
+[inputs.devrepo]
+kind = "repo"
+url = "{base_url}"
+
+[outputs.packages.default]
+packages = ["devrepo#hello"]
+
+[outputs.devShells.default]
+packages = ["devrepo#ripgrep"]
+"#
+        ),
+    )
+    .unwrap();
 
     let (ok, out, err) = run(
         fn_bin().args(["flake", "show", "--root"]).arg(&flake_root),
         &env_root,
     );
     assert!(ok, "flake show failed:\nstderr:\n{err}");
-    assert!(out.contains("test"));
-    assert!(out.contains("feathernix-stable"));
+    assert!(out.contains("cached flake"), "{out}");
+    assert!(out.contains("resolved hello-1.0.0-1 from devrepo"), "{out}");
+    assert!(
+        out.contains("resolved ripgrep-1.0.0-1 from devrepo"),
+        "{out}"
+    );
+}
+
+#[test]
+fn flake_show_fails_when_repo_not_cached() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env_root = tmp.path().join("fnroot");
+    let flake_root = tmp.path().join("flake-root");
+    std::fs::create_dir_all(&flake_root).unwrap();
+    std::fs::write(
+        flake_root.join("flake.toml"),
+        r#"
+[inputs.devrepo]
+kind = "repo"
+url = "file:///not-cached"
+
+[outputs.packages.default]
+packages = ["devrepo#hello"]
+"#,
+    )
+    .unwrap();
+
+    let (ok, _out, err) = run(
+        fn_bin().args(["flake", "show", "--root"]).arg(&flake_root),
+        &env_root,
+    );
+    assert!(!ok, "flake show should fail for uncached repo");
+    assert!(err.contains("fn repo add"), "stderr:\n{err}");
+    assert!(err.contains("fn repo refresh"), "stderr:\n{err}");
+}
+
+#[test]
+fn flake_lock_fails_for_path_or_flake_input() {
+    for (kind, name) in [("path", "local"), ("flake", "other")] {
+        let tmp = tempfile::tempdir().unwrap();
+        let env_root = tmp.path().join("fnroot");
+        let flake_root = tmp.path().join("flake-root");
+        std::fs::create_dir_all(&flake_root).unwrap();
+        std::fs::write(
+            flake_root.join("flake.toml"),
+            format!(
+                r#"
+[inputs.{name}]
+kind = "{kind}"
+url = "../whatever"
+"#
+            ),
+        )
+        .unwrap();
+
+        let (ok, _out, err) = run(
+            fn_bin().args(["flake", "lock", "--root"]).arg(&flake_root),
+            &env_root,
+        );
+        assert!(!ok, "flake lock should fail for kind {kind}");
+        assert!(err.contains("unsupported lock input"), "stderr:\n{err}");
+        assert!(
+            !flake_root.join("flake.lock.toml").exists(),
+            "lockfile should not be written for kind {kind}"
+        );
+    }
 }
 
 #[test]
@@ -356,7 +511,10 @@ fn signed_repo_missing_signature_with_required_fails() {
         ]),
         &env_root,
     );
-    assert!(!ok, "expected add+refresh to fail with required sig missing");
+    assert!(
+        !ok,
+        "expected add+refresh to fail with required sig missing"
+    );
     assert!(
         err.contains("signature missing") || err.contains("SignatureMissing"),
         "stderr:\n{err}"
@@ -387,7 +545,10 @@ fn signed_repo_missing_signature_optional_passes() {
         ]),
         &env_root,
     );
-    assert!(ok, "add should succeed without sig when not required:\nstdout:\n{out}\nstderr:\n{err}");
+    assert!(
+        ok,
+        "add should succeed without sig when not required:\nstdout:\n{out}\nstderr:\n{err}"
+    );
     assert!(out.contains("sig missing"));
 }
 

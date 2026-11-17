@@ -23,7 +23,7 @@ detail see [docs/architecture.md](docs/architecture.md).
 
 ## Workspace shape
 
-Single Cargo workspace, `edition = "2024"`, `rust-version = "1.85"`. All
+Single Cargo workspace, `edition = "2024"`, `rust-version = "1.95"`. All
 crates live under `crates/`. Three roles:
 
 | Role | Crates | Binaries |
@@ -41,6 +41,10 @@ If you are tempted to extract maintainer code into a separate repo, don't —
 that decision has been considered and rejected. The only crate worth
 re-evaluating in isolation is `feathernix-buildd`, and only if it grows
 dependencies (Postgres, a web UI) the rest of the workspace shouldn't carry.
+
+Shared cryptographic utilities live in `feathernix-crypto`. Its `CompatOsRng`
+bridges Rand 0.10 OS randomness to the older traits required by `pgp`. Keep
+RNG compatibility dependencies contained there.
 
 ## Conventions
 
@@ -69,12 +73,12 @@ dependencies (Postgres, a web UI) the rest of the workspace shouldn't carry.
 
 ## Dependency landmines
 
-- **SQLite version pinning.** `feathernix-buildd` pins `rusqlite = "0.32"`,
-  which pulls `libsqlite3-sys = 0.30`; this matches what Diesel uses on the
+- **SQLite version pinning.** `feathernix-buildd` pins `rusqlite = "0.43"`,
+  which pulls `libsqlite3-sys = 0.40`; this matches what Diesel uses on the
   consumer side. Cargo's `links = "sqlite3"` rule forbids two versions of
   the same native lib in one binary. Before bumping either crate, look up
   the *exact* `libsqlite3-sys` version each pulls in and confirm they match.
-- **`edition = "2024"`** is required (`rust-version = "1.85"`). If `cargo
+- **`edition = "2024"`** is required (`rust-version = "1.95"`). If `cargo
   build` complains about an unstable edition, the toolchain is too old —
   fix the toolchain, don't downgrade the edition.
 

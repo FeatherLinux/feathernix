@@ -35,6 +35,10 @@ pub enum RepoError {
     },
     #[error("package {name} not found for arch {arch}")]
     PackageNotFound { name: String, arch: String },
+    #[error(
+        "repository URL {base_url} is not cached; run `fn repo add <name> {base_url}` and `fn repo refresh` first"
+    )]
+    RepositoryNotCached { base_url: String },
     #[error("signature missing for {url}")]
     SignatureMissing { url: String },
     #[error("signature invalid for {url}: {reason}")]
@@ -75,7 +79,11 @@ arch = "x86_64-linux"
 "#,
         )
         .unwrap();
-        std::fs::write(src.join("manifest.toml"), manifest.to_pretty_string().unwrap()).unwrap();
+        std::fs::write(
+            src.join("manifest.toml"),
+            manifest.to_pretty_string().unwrap(),
+        )
+        .unwrap();
         std::fs::write(src.join("payload/bin/hello"), b"echo hello\n").unwrap();
         let pkg_path = packages_dir.join("hello-1.0.0-1-x86_64-linux.fnpkg.7z");
         pack(&src, &pkg_path).unwrap();
@@ -146,6 +154,48 @@ arch = "x86_64-linux"
     }
 
     #[test]
+    fn resolver_can_scope_to_cached_repo_url() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_root = make_fixture_repo(tmp.path());
+        let base_url = format!("file://{}", repo_root.display());
+
+        let db = Db::open_in_memory().unwrap();
+        let sync = RepoSync::new(&db, tmp.path().join("keyrings")).unwrap();
+        let loaded = LoadedRepo {
+            source_path: std::path::PathBuf::from("/etc/feathernix/repos/devrepo.toml"),
+            repo: RepoBlock {
+                name: "devrepo".to_string(),
+                description: None,
+                base_url: base_url.clone(),
+                enabled: true,
+                priority: 10,
+                signing: None,
+                refresh: None,
+            },
+        };
+        sync.refresh_all(&[loaded]).unwrap();
+
+        let resolver = Resolver::new(&db, "x86_64-linux");
+        let resolved = resolver
+            .resolve_from_repo_url("hello", &base_url)
+            .expect("resolve from exact repo URL");
+        assert_eq!(resolved.repo_name, "devrepo");
+
+        let missing_pkg = resolver
+            .resolve_from_repo_url("nope", &base_url)
+            .unwrap_err();
+        assert!(matches!(missing_pkg, RepoError::PackageNotFound { .. }));
+
+        let missing_repo = resolver
+            .resolve_from_repo_url("hello", "file:///not-cached")
+            .unwrap_err();
+        assert!(matches!(
+            missing_repo,
+            RepoError::RepositoryNotCached { .. }
+        ));
+    }
+
+    #[test]
     fn resolver_returns_not_found_for_unknown() {
         let db = Db::open_in_memory().unwrap();
         let resolver = Resolver::new(&db, "x86_64-linux");
@@ -161,7 +211,8 @@ arch = "x86_64-linux"
         let server = httpmock::MockServer::start();
         let index_bytes = std::fs::read(repo_root.join("repodata/index.toml")).unwrap();
         let _m = server.mock(|when, then| {
-            when.method(httpmock::Method::GET).path("/repodata/index.toml");
+            when.method(httpmock::Method::GET)
+                .path("/repodata/index.toml");
             then.status(200).body(index_bytes);
         });
 

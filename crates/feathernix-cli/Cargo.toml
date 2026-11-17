@@ -35,4 +35,4 @@ tempfile.workspace = true
 feathernix-archive.workspace = true
 feathernix-repo.workspace = true
 pgp.workspace = true
-rand.workspace = true
+feathernix-crypto.workspace = true

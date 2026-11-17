@@ -6,7 +6,7 @@ use pgp::composed::{
 };
 use pgp::crypto::hash::HashAlgorithm;
 use pgp::types::{KeyDetails, Password};
-use rand::rngs::OsRng;
+use feathernix_crypto::CompatOsRng;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -50,7 +50,7 @@ impl SecretKey {
     /// Sign `data` and return an ASCII-armored detached signature.
     pub fn sign_detached_armor(&self, data: &[u8]) -> SignResult<Vec<u8>> {
         let sig = DetachedSignature::sign_binary_data(
-            OsRng,
+            CompatOsRng,
             &self.key.primary_key,
             &self.password,
             HashAlgorithm::Sha256,
@@ -108,7 +108,7 @@ pub fn generate_ephemeral(user_id: &str) -> SignResult<(SecretKey, Vec<u8>)> {
         .build()
         .map_err(|e| SignError::OpenPgp(e.to_string()))?;
     let sk = params
-        .generate(OsRng)
+        .generate(CompatOsRng)
         .map_err(|e| SignError::OpenPgp(format!("generate: {e}")))?;
     let pk = SignedPublicKey::from(sk.clone());
     let mut armor = Vec::new();

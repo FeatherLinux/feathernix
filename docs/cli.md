@@ -60,10 +60,13 @@ fn store path-info <path>
 ### `fn flake`
 
 ```sh
-fn flake init
-fn flake show
-fn flake lock
+fn flake init           # write flake.toml
+fn flake show           # parse and resolve package refs from cached repo metadata
+fn flake lock           # lock repo inputs into flake.lock.toml
 ```
+
+`fn flake show` does not refresh repositories. Add and refresh the matching
+repo first so the input URL is present in the local SQLite cache.
 
 See [flakes.md](flakes.md).
 

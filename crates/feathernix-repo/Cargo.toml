@@ -23,9 +23,9 @@ hex.workspace = true
 diesel.workspace = true
 pgp.workspace = true
 smallvec.workspace = true
-rand.workspace = true
 
 [dev-dependencies]
+feathernix-crypto.workspace = true
 httpmock.workspace = true
 tempfile.workspace = true
 feathernix-archive.workspace = true

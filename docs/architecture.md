@@ -8,6 +8,12 @@ crates.io coordination tax.
 
 ## Crates
 
+### Shared cryptography
+
+| Crate | Responsibility |
+|---|---|
+| `feathernix-crypto` | Shared cryptographic utilities. `CompatOsRng` bridges Rand 0.10 OS randomness to the Rand Core 0.6 traits required by OpenPGP. |
+
 ### Consumer-side
 
 | Crate | Responsibility |

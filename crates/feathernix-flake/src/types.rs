@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +27,17 @@ pub enum InputKind {
     Repo,
     Flake,
     Path,
+}
+
+impl fmt::Display for InputKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            InputKind::Repo => "repo",
+            InputKind::Flake => "flake",
+            InputKind::Path => "path",
+        };
+        f.write_str(s)
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -63,10 +75,8 @@ pub struct LockedInput {
     pub kind: InputKind,
     pub url: String,
     #[serde(default)]
-    pub revision: Option<String>,
+    pub locked_revision: Option<String>,
     #[serde(default)]
-    pub sha256: Option<String>,
-    #[serde(default)]
-    pub index_sha256: Option<String>,
+    pub locked_sha256: Option<String>,
     pub fetched_at: String,
 }

@@ -47,7 +47,7 @@ three tables:
 | `build_artifacts` | id, job_id, path, sha256, signed (bool). |
 
 Access is via `rusqlite` directly (not Diesel). Single writer; the version
-pin (`rusqlite = "0.32"` / `libsqlite3-sys = "0.30"`) is enforced
+pin (`rusqlite = "0.43"` / `libsqlite3-sys = "0.40"`) is enforced
 workspace-wide — see [AGENTS.md](../AGENTS.md#dependency-landmines).
 
 ## Protocol
